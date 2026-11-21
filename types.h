@@ -7,12 +7,12 @@ enum INDICATOR {
     I_HAZZARD
 };
 
+// 0x21A byte 0
 enum CAN_LIGHTS {
-    L_BRAKE = 0x80,
-    L_FOG = 0x40,
-    L_BACKLIGHT = 0x04,
-    L_MAIN = 0x02,
-    L_DIP = 0x20
+    L_HIGH_BEAM = 0x02,
+    L_LOW_BEAM = 0x04,  // Main lights
+    L_FRONT_FOG = 0x20,
+    L_REAR_FOG = 0x40
 };
 
 enum GEAR {
@@ -52,21 +52,18 @@ enum ErrorLightID : uint16_t {
     RED_TRIANGLE = 41,
     ABS_DTC_TRIANGLE_WARNING = 42,
     SUSPENSION_WARNING = 43,
-    PARTICLE_FILTER = 49,
     TIRE_PRESSURE_YELLOW = 50,
     LIMIT_RED = 62,
     TIRE_PRESSURE_RED = 63,
-    CRUISE_WARNING = 69, // Also 85, 339
-    STEERING_WARNING = 73,
+    CRUISE_WARNING = 69,
     LIMIT_YELLOW = 78,
     COLD_WEATHER = 79,
     BATTERY_YELLOW = 161,
-    EXCLAMATION_MARK_YELLOW = 169,
-    DTC_DOUBLE_BLINKING = 184,
-    LOW_TIRE_PRESSURE_FRONT_LEFT = 139,  // Tire specific light availability depends on the cluster
-    LOW_TIRE_PRESSURE_REAR_RIGHT = 140,  // ^
-    LOW_TIRE_PRESSURE_REAR_LEFT = 141,   // ^
-    LOW_TIRE_PRESSURE_FRONT_RIGHT = 143, // ^
+    DTC_MODE = 184,
+    LOW_TIRE_PRESSURE_FRONT_LEFT = 139,
+    LOW_TIRE_PRESSURE_REAR_RIGHT = 140,
+    LOW_TIRE_PRESSURE_REAR_LEFT = 141,
+    LOW_TIRE_PRESSURE_FRONT_RIGHT = 143,
     LOW_TIRE_PRESSURE_ALL = 147,
     DSC_TRIANGLE_DOUBLE = 36,
     DSC_TRIANGLE_SYMBOL_ONLY = 215,
@@ -78,23 +75,17 @@ enum ErrorLightID : uint16_t {
     OVERHEAT_YELLOW = 257,
     FUEL_WARNING = 275,
     SERVICE_LIGHT = 281,
-    CAR_AHEAD_YELLOW = 282,
-    CAR_AHEAD_RED = 283,
-    AUTO_GEAR_BOX_YELLOW = 349,
-    DTC_SYMBOL_ONLY = 357,
     GEARBOX_TEMP_YELLOW = 104,
     GEARBOX_TEMP_RED = 105,
     BRAKES_HOT = 353,
     COOLANT_LOW = 166,
-    CAR_CAN_ROLL = 302,
-    DOOR_OPEN_LEFT = 715,
-    DOOR_OPEN_RIGHT = 716,
-    DSC_OFF = 673,
+    DOOR_OPEN_FRONT_RIGHT = 14,
+    DOOR_OPEN_FRONT_LEFT = 15,
+    DOOR_OPEN_REAR_LEFT = 16,
+    DOOR_OPEN_REAR_RIGHT = 17,
     ALARM_LIGHT_EXCLAMATION = 162,
     ALARM_LIGHT = 508,
     BRAKE_SYMBOL_RED = 308,
-    ADBLUE_REFILL_RED = 640,
-    ADBLUE_REFILL_YELLOW = 643,
     CHECKERED_FLAG = 446
 };
 
@@ -109,16 +100,11 @@ struct STimers {
     uint16_t canCounter = 0;
 };
 
-struct SRefueling {
-    uint8_t avgFuelFromCluster = 0;
-    const unsigned int counterCycles = 2;
-    unsigned int counter = 0;
-};
-
 struct SInput {
     IGNITION_STATE ignition = IG_ON;
     INDICATOR indicator_state = I_OFF;
 
+    bool time_valid = false; // Set when the PC has sent a time
     uint16_t time_year = 2010;
     uint8_t time_month = 1;
     uint8_t time_day = 1;
@@ -161,8 +147,6 @@ struct SInput {
     bool yellow_triangle = false;
     bool red_triangle = false;
     bool gear_issue = false;
-    bool exclamation_mark = false;
-    bool adblue_low = false;
     bool checkered_flag = false;
     bool limit_yellow = false;
     bool limit_red = false;
@@ -184,6 +168,15 @@ struct SInput {
     } doors;
 
     bool handbrake = false;
+
+    // bc_pressed stays set until the press has been sent
+    bool bc_button = false;
+    bool bc_pressed = false;
+
+    bool coasting = false;
+
+    // 0 unknown, 1 comfort, 2 sport, 3 sport+
+    uint8_t drive_mode = 0;
 
     struct {
         bool enabled = false;

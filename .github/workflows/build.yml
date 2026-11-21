@@ -8,31 +8,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-teensy-serial:
+  build-nano:
     runs-on: ubuntu-latest
-    name: Build for Teensy 4.1 with Serial CAN bus adapter
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Arduino CLI
-      uses: arduino/setup-arduino-cli@v1
-
-    - name: Install Teensy platform
-      run: |
-        arduino-cli config init
-        arduino-cli config add board_manager.additional_urls https://www.pjrc.com/teensy/package_teensy_index.json
-        arduino-cli core update-index
-        arduino-cli core install teensy:avr
-
-    - name: Build for Teensy 4.1
-      run: |
-        arduino-cli compile --fqbn teensy:avr:teensy41 .
-
-  build-nano-simhub:
-    runs-on: ubuntu-latest
-    name: Build for Arduino Nano with MCP2515 SPI and SimHub
+    name: Build for Arduino Nano with MCP2515 SPI
 
     steps:
     - name: Checkout code
@@ -54,8 +32,9 @@ jobs:
     - name: Build for Arduino Nano
       run: |
         arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328 \
-          --build-property "compiler.cpp.extra_flags=-DUSE_MCP_CAN_SPI -DUSE_SIMHUB" \
+          --build-property "compiler.cpp.extra_flags=-DUSE_MCP_CAN_SPI" \
           .
+
   build-nano-ambient:
     runs-on: ubuntu-latest
     name: Build for Arduino Nano with MCP2515 SPI and AD5272 ambient
@@ -106,31 +85,3 @@ jobs:
         arduino-cli compile --fqbn esp32:esp32:esp32 \
           --build-property "compiler.cpp.extra_flags=-DUSE_ESP32_TWAI" \
           .
-
-  build-teensy-flexcan:
-    runs-on: ubuntu-latest
-    name: Build for Teensy 4.1 with built-in FlexCAN
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Arduino CLI
-      uses: arduino/setup-arduino-cli@v1
-
-    - name: Install Teensy platform
-      run: |
-        arduino-cli config init
-        arduino-cli config add board_manager.additional_urls https://www.pjrc.com/teensy/package_teensy_index.json
-        arduino-cli core update-index
-        arduino-cli core install teensy:avr
-
-    - name: Enable FlexCAN adapter
-      # Teensy platform.txt doesn't honor compiler.cpp.extra_flags, so flip the define in source.
-      run: |
-        sed -i 's|^//#define USE_FLEXCAN_T4$|#define USE_FLEXCAN_T4|' config.h
-        grep -q '^#define USE_FLEXCAN_T4$' config.h
-
-    - name: Build for Teensy 4.1
-      run: |
-        arduino-cli compile --fqbn teensy:avr:teensy41 .

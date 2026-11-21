@@ -12,15 +12,15 @@ static MCP_CAN CAN(MCP_CAN_SPI_CS_PIN);
 
 void canBegin() {
     randomSeed(analogRead(A0));
-    while (CAN_OK != CAN.begin(MCP_STDEXT, CAN_100KBPS, MCP_CAN_SPI_SPEED)) {
+    while (CAN_OK != CAN.begin(MCP_STDEXT, CAN_500KBPS, MCP_CAN_SPI_SPEED)) {
         pc.println("CAN BUS init fail, retrying...");
         delay(100);
     }
     CAN.setMode(MCP_NORMAL);
 }
 
-void canSend(uint32_t id, const uint8_t* data) {
-    CAN.sendMsgBuf(id, 0, 8, (byte*)data);
+void canSend(uint32_t id, const uint8_t* data, uint8_t len) {
+    CAN.sendMsgBuf(id, 0, len, (byte*)data);
 }
 
 void canPoll(const CanHandlerEntry* handlers, size_t count) {

@@ -14,7 +14,7 @@ void canBegin() {
         (gpio_num_t)TWAI_RX_PIN,
         TWAI_MODE_NO_ACK
     );
-    twai_timing_config_t t_config = TWAI_TIMING_CONFIG_100KBITS();
+    twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
     twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
     while (twai_driver_install(&g_config, &t_config, &f_config) != ESP_OK
@@ -26,11 +26,11 @@ void canBegin() {
     }
 }
 
-void canSend(uint32_t id, const uint8_t* data) {
+void canSend(uint32_t id, const uint8_t* data, uint8_t len) {
     twai_message_t msg = {};
     msg.identifier = id;
-    msg.data_length_code = 8;
-    memcpy(msg.data, data, 8);
+    msg.data_length_code = len;
+    memcpy(msg.data, data, len);
     twai_transmit(&msg, pdMS_TO_TICKS(2));
 }
 

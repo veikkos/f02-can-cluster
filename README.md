@@ -1,307 +1,49 @@
-# BMW e90 cluster Arduino project
+# BMW F-series cluster Arduino project
 
-![Arduino Build](https://github.com/veikkos/e90-can-cluster/actions/workflows/build.yml/badge.svg)
+![Arduino Build](https://github.com/veikkos/f02-can-cluster/actions/workflows/build.yml/badge.svg)
 
-This is a BMW e90 cluster project to connect a real car instrument cluster to a personal computer using an Arduino microcontroller. The cluster can then be used in driving games.
+Drives a real BMW F-series instrument cluster from a PC, for use in driving games. A spinoff of [e90-can-cluster](https://github.com/veikkos/e90-can-cluster), which documents the PC side: the binary serial protocol, the proxy and the BeamNG plugin.
 
-__This project focuses on documenting things [mostly in code] that were hard to come by. It also goes further than many similar projects. Please feel free to contribute!__
+Developed on an F01/F02 (7 series) cluster, part number 9312035, with an ESP32. Other F-series clusters may behave differently.
 
-[![Video demo](./media/highlight.jpg)](https://www.youtube.com/watch?v=nLnR1HzLEew)
-_Click the image to see a video demo_
+![F02 cluster](./media/highlight.jpg)
 
-![Cluster with oil temperature gauge](./media/highlight-oil-temp.jpg)
-_Cluster variant with oil temperature gauge_
+[![Gallery](./media/gallery.jpg)](./gallery)
+_Click the image to see the gallery_
 
-## Capabilities
+## Features
 
-The code is able to control following things on the cluster
-
-- Speedometer
-    - Speed needs to be "calibrated" due to built-in error (unless programmed away)
-        - See `SPEED_CALIBRATION` in [config.h](config.h)
-- RPM
-- Indicators
-- Backlight
-- Indirectly controlled by the cluster
-    - Odometer (mileage)
-    - Trip meter
-    - Average speed
-    - Average fuel consumption
-    - Range
-- Light symbols (high beams, fog lights front/back)
-- Fuel gauge
-    - Relatively well calibrated out-of-the-box
-    - Low fuel warning is automatic based on the level
-    - See `REFUELING_LED_PIN` which can be used for a led indicating refueling
-        - Refueling (change of fuel level) is done slowly as it seems to work most reliably that way
-        - The level change works best if the ignition is turned off during refueling
-- Instant fuel consumption
-    - Separate gauge or on the multi function display depending on the cluster
-- Handbrake
-- Gear selection (automatic gearbox cluster!)
-    - See `NUMBER_OF_GEARS` and set it as high as the cluster allows before showing error code
-    - Current selection (P, R, N, D)
-    - Manual mode (M1, M2...)
-    - "Sport" automatic mode (Sport D1, Sport D2...)
-- Cruise control
-    - Also Adaptive Cruise Control with https://github.com/veikkos/driver_assistance_angelo234!
-    - Try `CAN_CRUISE_ALT` if you get cruise control error - for now it just suppresses the warning and cruise functionality is unavailable
-- Warnings ([see also](#notes-and-findings))
-    - Check engine
-    - Low oil pressure
-    - Traction control
-    - Stability control
-    - High or very high engine temperature
-    - High clutch temperature
-    - High brake temperature
-    - Tire deflated (individual, all)
-        - It depends on the cluster unit if it supports the individual tire monitoring
-    - Radiator warning
-    - Doors open while on gear
-    - Tailgate open
-    - ... and more
-- Coolant temperature
-    - Visible in debug menu only ([instructions](https://www.youtube.com/watch?v=7exeRgWtkt4&ab_channel=BossM5))
-- Oil temperature
-    - Visible with higher trim clusters only
-- Oil level
-    - Set to show OK unless oil pressure light is on
+- Speedometer, odometer, RPM, fuel gauge, range, and instant and average consumption
+- Gear and drive mode (COMFORT+, SPORT, SPORT+, TRACTION, DSC OFF)
+- Lights, indicators, handbrake, doors and boot
+- DSC and traction control lamps and messages
+- Cruise control with the set speed
+- EfficientDynamics energy recovery
+- On-board computer (BC) button
 - Time and date
-- Suppress warning symbols
-    - ABS
-    - SOS call system
-    - Steering wheel
-    - Airbags
-- Ambient temperature
-    - This requires optional digital potentiometer, AD5272 is supported
-      - You might want to set reasonable default resistance value (outside of this repo's scope)
-      - Ambient temperature is __really__ slow to update due to heavy filtering in the cluster
-      - Enable with `USE_AD5272_AMBIENT` in [config.h](config.h)
+- Warning symbols, see the [gallery](gallery)
 
-## Hardware
+Not yet supported: the adaptive cruise control display.
 
-### Configuration
+Known limitations:
 
-Edit [config.h](config.h) to configure the project for your setup.
+- "Service indicator not available" shows at ignition on, the cluster misses its CAS backup.
+- The cluster warns above 120 km/h. It is coded into this cluster.
 
-### Microcontroller
+## Differences from e90-can-cluster
 
-Tested boards:
+- The CAN bus runs at 500 kbit/s and many frames carry a CRC and an alive counter.
+- Only the MCP2515 and ESP32 TWAI adapters are supported, see [config.h](config.h).
+- The binary protocol is the same. The fields marked F02 in its description are used only here.
+- SimHub is not supported, only the binary protocol.
 
-- Teensy++ 2.0
-- Teensy 4.1
-- Arduino Nano
-- Arduino Uno
-- SparkFun Pro Micro (clone)
-- ESP32 Dev Board
+## Credits
 
-Many other models should work with little to no adaptation.
-
-### Cluster
-
-The following Siemens VDO clusters have been tested to be working:
-
-| ZB NR | SW | HW |
-|-------|----|----|
-| 9166852-02 | 79.50.C1 | 0E |
-| 9130227-01 | 66.52.C0 | 0E |
-| 9148028-01* | 73.50.C2 | 0E |
-| 6980288-04** | 5C.50.80 | 0F |
-
-\* mostly tested
-
-\*\* mostly tested, requires `CAN_CRUISE_ALT`
-
-Fully tested models are from Euro (km/h) cars __with automatic gearboxes__. It is handy because those can show the gear selection (P, R, N, D) and manual mode (M1, M2...) as well as a "Sport" mode. Manual gear clusters are not currently fully supported (pull request welcome) but should still work.
-
-Other clusters might not work completely but could need some adaptation. Also mph needs some adaptation e.g. in the cruise control code.
-
-__NOTE:__ _The cluster will set a "tampering dot" to the bottom part of the screen when played around with. It's not advisable to do this project on a cluster which you still plan to use in a car!_
-
-#### Pinout
-
-```
-               +----------+
-               |  1 | 10  |
-               |  2 | 11  |
-               |  3 | 12  |
- Temperature E |  4 | 13  |
- Temperature M |  5 | 14  |
-         CAN H |  6 | 15  |
-         CAN L |  7 | 16  | BC buttons
-               |  8 | 17  |
-           12V |  9 | 18  | GND
-               +----------+
-```
-
-__Tip:__ There are faint numbers on the cluster port marking the pin numbers. Look closely!
-
-- __Temperature__: Outside temperature is measured with an external sensor of resistive type between pins 4 and 5. A resistor of 10k Ohm can be used to show approximately 10'C which removes the cold weather warning. Alternatively see `USE_AD5272_AMBIENT` for digital potentiometer solution.
-- __BC buttons__: Cluster menus can be navigated by connecting pin 16 to ground with 3 buttons via resistors. The values should be 1k (Enter), 2k (Up), 3k (Down) Ohm
-
-Remember to connect the cluster GND, microcontroller GND and Serial CAN bus adapter GND together.
-
-### Power
-
-The cluster needs 12V power supply. 12V wall adapter can be used, but you need to make sure it's regulated. If you are unsure you should check that the voltage is roughly 12V with a multimeter when there is no load to avoid overvoltage.
-
-### CAN adapter
-
-There should __NOT__ be 120 Ohm termination in the CAN bus adapter. It should be removed if it exists.
-
-Four adapter types are supported.
-
-#### Serial CAN bus adapter (default)
-
-_This adapter is not recommended for new builds. Pick any other supported adapter instead._
-
-https://docs.longan-labs.cc/1030001/
-
-- Serial CAN bus adapter has **persistent** memory for the baud rate and CAN bus speeds. You should only set them once
-- Connection should be made RX to TX and TX to RX between the cluster and the Serial CAN bus adapter
-- It's best to set the parameters with one-time-use-only code one at the time and have `while(1);` after the set
-    - Hook up the UART code so that you can see what the adapter responds. It should say `OK` after you set a value
-    - Send `+++` to go to configuration mode
-    - The CAN bus towards the cluster should be set to __100 kb/s__ with `AT+C=12`
-    - The serial port speed between the microcontroller and the adapter should be set to __115200__ baud with `AT+S=4`. This is the highest speed possible and is needed to be able to send CAN messages fast enough
-- __The Serial CAN bus adapter can be easily overwhelmed with commands. It seems to work much better having 3 ms between sending frames. See the main loop how this can be achieved without blocking__
-- The adapter is picky about the baud rate. Smallest error AT90USB has is +2.1% 115200 and it did not work. When changed to the second closest error -3.5% it started working
-
-#### MCP2515 SPI adapter
-
-Enable `USE_MCP_CAN_SPI` in config. Set `MCP_CAN_SPI_SPEED` to either 8 or 16 MHz depending on your adapter. Install "mcp_can" library. More at https://github.com/coryjfowler/MCP_CAN_lib
-
-#### ESP32 built-in TWAI controller
-
-Enable `USE_ESP32_TWAI` in config. Uses the ESP32's built-in TWAI (CAN) controller. You still need an external CAN transceiver (e.g. SN65HVD230) chip between the ESP32's TX/RX pins and the cluster's CAN H/L.
-
-#### Teensy 4.x built-in CAN controller
-
-Enable `USE_FLEXCAN_T4` in config. Uses the Teensy 4.0/4.1 built-in CAN controller via the [FlexCAN_T4](https://github.com/tonton81/FlexCAN_T4) library, which ships with Teensyduino. You still need an external CAN transceiver (e.g. SN65HVD230) chip between the Teensy and the cluster's CAN H/L.
-
-## Software setup
-
-### SimHub
-
-SimHub support is experimental and only been briefly tested in BeamNG and in ETS2. Enable `USE_SIMHUB` in config. Connect as an Arduino device in "Multiple Arduinos" mode and use "Custom protocol" from:
-
-- `simhub/custom_protocol.txt`: BeamNG/Generic
-- `simhub/custom_protocol_ets2.txt`: ETS2 / ATS with more lights and warnings
-
-### Custom end-to-end solution
-
-The custom end-to-end solution supports _advanced_ features.
-
-The setup is a bit convoluted but currently it consists of the following parts:
-- [BMW e90 CAN bus BeamNG protocol](https://github.com/veikkos/e90-can-cluster-beamng-protocol)
-    - This BeamNG plugin provides the game telemetry via a UDP socket
-- [BMW e90 CAN bus cluster proxy](https://github.com/veikkos/e90-can-cluster-proxy)
-    - This is the "SimHub" equivalent of this setup
-    - The Node.js proxy receives the telemetry and sends it to the microcontroller over a (virtual USB) serial port
-    - The proxy supports **BeamNG**, **Euro Truck Simulator 2** and **American Truck Simulator**
-    - It could be possible to get rid of this proxy and send e.g. BeamNG telemetry directly to the microcontroller if the microcontroller supports networking. This is considered in the future.
-- This repository is the microcontroller Arduino firmware that receives the telemetry from the proxy and sends it to the cluster over CAN bus
-
-#### The custom binary API
-
-The cluster is controlled over a virtual serial port using a compact binary protocol. The (potentially virtual) baud rate is set to 921600 by default. If your Arduino has a software USB-serial, drop `PC_SERIAL_BAUD` to 115200 on both Arduino and proxy side.
-
-##### Frame Structure (Little Endian)
-
-| Offset | Size | Field               | Description                          |
-|--------|------|---------------------|--------------------------------------|
-| 0      | 1    | `'S'`               | Start marker                         |
-| 1      | 1    | `year`              | e.g., 25 = 2025                      |
-| 2      | 1    | `month`             | 1–12                                 |
-| 3      | 1    | `day`               | 1–31                                 |
-| 4      | 1    | `hour`              | 0–23                                 |
-| 5      | 1    | `minute`            | 0–59                                 |
-| 6      | 1    | `second`            | 0–59                                 |
-| 7      | 2    | `rpm`               | 0–65535                              |
-| 9      | 2    | `speed`             | km/h × 10 (e.g. 853 = 85.3 km/h)     |
-| 11     | 1    | `gear`              | 0 = R, 1 = N, 2+ = forward gears     |
-| 12     | 1    | `water temp`        | °C                                   |
-| 13     | 1    | `oil temp`          | °C                                   |
-| 14     | 2    | `fuel`              | 0–1000 (% × 10)                      |
-| 16     | 4    | `showlights`        | Bitfield of all light states (see tables below) |
-| 20     | 1    | `showlights ext`    | Bitfield of extended light states (see tables below) |
-| 21     | 2    | `fuel injection`    | microliters per 100 ms               |
-| 23     | 2    | `custom light`      | Symbol ID (0–65535)                  |
-| 25     | 1    | `custom light on`   | 1 = show, 0 = off                    |
-| 26     | 1    | `gear extension`    | ASCII char: M = semi-automatic, S = sport mode, P = park, A = automatic, N = none |
-| 27     | 2    | `cruise speed`      | km/h                                 |
-| 29     | 1    | `cruise status`     | Bit 0: Active (1=on, 0=off), Bit 1: Vehicle ahead, Bit 2: Collision warning, Bits 3-5: Adaptive cruise following distance (1-4) |
-| 30     | 1    | `ignition`          | 3 = starter, 2 = on, 1 = accessory only, 0 = off |
-| 31     | 1    | `engine running`    | 1 = on, 0 = off                      |
-| 32     | 2    | `ambient temp`      | Signed, °C × 10 (e.g. 215 = 21.5°C, -50 = -5.0°C) |
-| 34     | 1    | `checksum`          | Additive checksum of all previous bytes excluding start marker |
-
-##### `showlights` Breakdown
-
-```
-Bit  0 : DL_SHIFT         (Shift light) UNUSED
-Bit  1 : DL_FULLBEAM      (Full beam headlights)
-Bit  2 : DL_HANDBRAKE     (Handbrake engaged)
-Bit  4 : DL_TC            (Traction control active)
-Bit  5 : DL_SIGNAL_L      (Left turn signal)
-Bit  6 : DL_SIGNAL_R      (Right turn signal)
-Bit  8 : DL_OILWARN       (Oil pressure warning)
-Bit  9 : DL_BATTERY       (Battery warning) UNUSED
-Bit 10 : DL_ABS           (ABS active/disabled) UNUSED
-Bit 11 : DL_BEACON        (Truck beacon light is on)
-Bit 12 : DL_LOWBEAM       (Low beam headlights)
-Bit 13 : DL_ESC           (ESC active)
-Bit 14 : DL_CHECKENGINE   (Check engine light)
-Bit 15 : DL_CLUTCHTEMP    (Clutch temp warning)
-Bit 16 : DL_FOGLIGHTS     (Fog lights on)
-Bit 17 : DL_BRAKETEMP     (High brake temperature)
-Bit 18 : DL_TIREFLAT_FL   (Front left tire deflated)
-Bit 19 : DL_TIREFLAT_FR   (Front right tire deflated)
-Bit 20 : DL_TIREFLAT_RL   (Rear left tire deflated)
-Bit 21 : DL_TIREFLAT_RR   (Rear right tire deflated)
-Bit 22 : DL_RADIATOR      (Radiator warning)
-Bit 23 : DL_ENGINETEMP_Y  (Engine temp yellow)
-Bit 24 : DL_ENGINETEMP_R  (Engine temp red)
-Bit 25 : DL_DOOROPEN_FL   (Front left door open)
-Bit 26 : DL_DOOROPEN_FR   (Front right door open)
-Bit 27 : DL_DOOROPEN_RL   (Rear left door open)
-Bit 28 : DL_DOOROPEN_RR   (Rear right door open)
-Bit 29 : DL_TAILGATEOPEN  (Tailgate open)
-Bit 30 : DL_TC_DISABLED   (Traction control disabled)
-Bit 31 : DL_ESC_DISABLED  (ESC disabled)
-```
-
-##### `showlights ext` Breakdown
-
-```
-Bit  0 : DL_EXT_YELLOW_TRIANGLE  (Generic warning, yellow)
-Bit  1 : DL_EXT_RED_TRIANGLE     (Generic warning, red)
-Bit  2 : DL_EXT_GEARBOX_ISSUE    (Gearbox issue)
-Bit  3 : DL_EXT_EXCLAMATION_MARK (Generic exclamation mark)
-Bit  4 : DL_EXT_ADBLUE_LOW       (AdBlue level low)
-Bit  5 : DL_EXT_CHECKERED_FLAG   (Checkered flag, launch control)
-Bit  6 : DL_EXT_LIMIT_YELLOW     (Speed limit, yellow)
-Bit  7 : DL_EXT_LIMIT_RED        (Speed limit, red)
-```
-
-## Notes and findings
-
-- There's a Discord community around hacking the clusters with lots of knowledge and information
-    - [Arduino-Tacho Gang](https://discord.gg/UQFsS9D6kq)
-- Lights on the cluster (like Check Engine, DTC, Oil Pressure) can be controlled with CAN ID `0x592`. See `canSendErrorLight` and codes in [symbol document](./external/E92%20checkcontrol%20symbols.pdf)
-    - The IDs differ on some clusters and there are more symbols to explore than what the document shows
-- The code was originally implemented for _mbed LPC1768_. You can find the old code from the history with a tag `mbed_last`
-- Special credits for material or help to
-    - beanseater420
-    - peter black
-       - [Log](./external/e64_dump_peter_black.trc)
-       - [Automatic gear reverse engineering](./external/automatic_gear_peter_black.webp)
-    - [HeinrichG-V12](https://github.com/HeinrichG-V12/E65_ReverseEngineering)
-    - [Trevor Cook](https://www.loopybunny.co.uk/CarPC/k_can.html)
-    - [Marcin648](https://github.com/Marcin648/e90-dashboard-ets2)
-    - [SimHub](https://www.simhubdash.com/)
-        - Code borrowed from SimHub `DisplayClientV2` have their respective licensing
-    - telefon01
-    - EXCV31
-    - @DanielOnuchowski
-        - ETS2 SimHub protocol
+- [r00li/CarCluster](https://github.com/r00li/CarCluster)
+- [fatihcesur/bmw-f30-cluster-simhub](https://github.com/fatihcesur/bmw-f30-cluster-simhub)
+- [damienmaguire/BMW-F11-EV-Conversion](https://github.com/damienmaguire/BMW-F11-EV-Conversion)
+- [superwofy/E9X-M-CAN-Integration-Module](https://github.com/superwofy/E9X-M-CAN-Integration-Module)
+- [F10 cluster bench write-up on DRIVE2](https://www.drive2.ru/l/716429133348870019/)
+- [emdzej/ediabasx-docs-sgbd](https://emdzej.github.io/ediabasx-docs-sgbd/)
+- The `M5_F10` firmware, author unknown
+- [e90-can-cluster](https://github.com/veikkos/e90-can-cluster#notes-and-findings) and its credits

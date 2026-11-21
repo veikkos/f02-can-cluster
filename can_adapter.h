@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 void canBegin();
-void canSend(uint32_t id, const uint8_t* data);
+void canSend(uint32_t id, const uint8_t* data, uint8_t len = 8);
 
 typedef void (*CanFrameHandler)(const uint8_t* data);
 

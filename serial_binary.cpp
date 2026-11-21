@@ -1,7 +1,5 @@
 #include "config.h"
 
-#if !defined(USE_SIMHUB)
-
 #include <Arduino.h>
 #include "types.h"
 #include "serial.h"
@@ -81,6 +79,7 @@ static void serialParse() {
     s_input.time_hour   = p[idx++];
     s_input.time_minute = p[idx++];
     s_input.time_second = p[idx++];
+    s_input.time_valid  = s_input.time_month >= 1 && s_input.time_month <= 12;
 
     s_input.rpm         = parse_u16(&p[idx]); idx += 2;
     s_input.speed       = parse_u16(&p[idx]); idx += 2;
@@ -97,6 +96,8 @@ static void serialParse() {
     s_input.light_highbeam   = flags & (1UL << 1);
     s_input.handbrake        = flags & (1UL << 2);
     s_input.light_tc_active  = flags & (1UL << 4);
+
+    s_input.drive_mode = ((flags >> 3) & 0x01) | (((flags >> 7) & 0x01) << 1);
 
     bool left_signal  = flags & (1UL << 5);
     bool right_signal = flags & (1UL << 6);
@@ -156,8 +157,6 @@ static void serialParse() {
     s_input.yellow_triangle  = flagsExt & (1UL << 0);
     s_input.red_triangle     = flagsExt & (1UL << 1);
     s_input.gear_issue       = flagsExt & (1UL << 2);
-    s_input.exclamation_mark = flagsExt & (1UL << 3);
-    s_input.adblue_low       = flagsExt & (1UL << 4);
     s_input.checkered_flag   = flagsExt & (1UL << 5);
     s_input.limit_yellow     = flagsExt & (1UL << 6);
     s_input.limit_red        = flagsExt & (1UL << 7);
@@ -174,6 +173,10 @@ static void serialParse() {
     s_input.cruise.acc.red_car_blinking = (cruiseMode & 0x04) != 0;
     uint8_t distanceCode = (cruiseMode >> 3) & 0x07;
     s_input.cruise.acc.distance = (distanceCode >= 1 && distanceCode <= 4) ? distanceCode : 0;
+
+    s_input.coasting = (cruiseMode & 0x40) != 0;
+    s_input.bc_button = (cruiseMode & 0x80) != 0;
+    if (s_input.bc_button) s_input.bc_pressed = true;
 
     s_input.ignition         = (IGNITION_STATE)p[idx++];
     s_input.engine_running   = p[idx++] != 0;
@@ -212,5 +215,3 @@ void serialPoll() {
     serialRead();
     serialParse();
 }
-
-#endif

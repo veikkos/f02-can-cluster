@@ -1,7 +1,7 @@
 #pragma once
 
-// CAN adapter: pick one option below, or none for the Serial CAN bus default.
-// USE_MCP_CAN_SPI, USE_ESP32_TWAI and USE_FLEXCAN_T4 are mutually exclusive.
+// CAN adapter: pick one option below.
+// The cluster's CAN bus runs at 500 kbit/s.
 
 // MCP2515 SPI adapter. Install "mcp_can" library.
 // More at https://github.com/coryjfowler/MCP_CAN_lib
@@ -28,58 +28,23 @@
     #define TWAI_RX_PIN 22
 #endif
 
-// Teensy 4.x built-in FlexCAN controller. Uses the FlexCAN_T4 library
-// bundled with Teensyduino. Requires an external CAN transceiver
-// (e.g. SN65HVD230) on the bus pins.
-//#define USE_FLEXCAN_T4
-
-#ifndef FLEXCAN_T4_BUS
-    // Pick CAN1 (TX=22, RX=23), CAN2 (TX=1, RX=0) or CAN3 (TX=31, RX=30)
-    // on Teensy 4.1. Teensy 4.0 exposes CAN1 and CAN3 only.
-    #define FLEXCAN_T4_BUS CAN1
+#if defined(USE_MCP_CAN_SPI) == defined(USE_ESP32_TWAI)
+    #error "Select exactly one CAN adapter in config.h"
 #endif
 
-// Serial protocol: uncomment for SimHub, otherwise custom binary
-//#define USE_SIMHUB
+#ifndef CAN_FRAME_INTERVAL_US
+    // Minimum time between sent CAN frames
+    #define CAN_FRAME_INTERVAL_US 1000
+#endif
 
-// Serial baud rates
+// Serial baud rate
 #ifndef PC_SERIAL_BAUD
     #define PC_SERIAL_BAUD 921600
 #endif
 
-#ifndef CAN_SERIAL_BAUD
-    #define CAN_SERIAL_BAUD 115200
-#endif
-
 // Cluster parameters
 #ifndef NUMBER_OF_GEARS
-    #define NUMBER_OF_GEARS 7
-#endif
-
-#ifndef SPEED_CALIBRATION
-    // 60 = reduces indicated speed by ~6% to compensate for the built-in speedometer
-    // padding (law requires speedometers to never read below actual speed).
-    // With 0: odometer is accurate, speedometer reads a bit high (factory behavior).
-    // With 60: speedometer reads close to true speed, but odometer counts a bit slow.
-    // Error can be fully removed by removing the built-in error by "coding".
-    #define SPEED_CALIBRATION 60
-#endif
-
-// Comment away to hide "SPORT" from the sport gear mode
-#define GEAR_SPORT_TEXT
-
-// Enable to show "S1", "S2" instead of "D1", "D2" in sport gear mode
-//#define GEAR_SPORT_S
-
-// Comment away to show "DS" in sport mode, use with GEAR_SPORT_S
-#define GEAR_EXPLICIT_NUMBER_IN_SPORT
-
-// Uncomment if you get cruise control warnings
-//#define CAN_CRUISE_ALT
-
-// Hardware
-#ifndef REFUELING_LED_PIN
-    #define REFUELING_LED_PIN 33
+    #define NUMBER_OF_GEARS 8
 #endif
 
 // AD5272 digital potentiometer for ambient temperature
@@ -98,7 +63,4 @@
 #endif
 
 // Debug: uncomment to log CAN frames from cluster
-//#define READ_FRAMES_FROM_CLUSTER_1B4  // Speed & handbrake
-//#define READ_FRAMES_FROM_CLUSTER_2C0  // Brightness/light sensor
 //#define READ_FRAMES_FROM_CLUSTER_2CA  // Outside temperature
-//#define READ_FRAMES_FROM_CLUSTER_2F8  // Time and date
