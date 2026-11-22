@@ -195,9 +195,14 @@ bool canSendEmergencyCall() {
 
 // Cruise control (layout from fatihcesur/bmw-f30-cluster-simhub):
 //   byte 2     0x22 set speed marker, 0x26 marker and the set speed as a number
-//   byte 5     0x96 cruise symbol
-//   bytes 6-7  set speed * 16
+//   byte 5     0x96 cruise symbol, 0x80 in limiter mode, bit 1 makes LIM blink
+//   bytes 6-7  set speed * 16, the low two bits are the mode:
+//              0 cruise, 1 off, 2 limiter (LIM and the limit), 3 "Cruise control failure"
 bool canSendCruiseControl() {
+    static bool limiter = false;
+    static bool limit_exceeded = false;
+    static bool failure = false;
+
     static uint8_t counter = 0;
     static uint16_t last_speed = 0;
     static uint32_t changed_ms = 0;
@@ -215,13 +220,17 @@ bool canSendCruiseControl() {
     uint8_t marker = 0xE0;
     uint8_t symbol = 0x00;
     uint16_t set_speed = 0x01EC;
+    uint8_t mode = 0;
     if (s_input.cruise.enabled) {
-        symbol = 0x96;
+        symbol = limiter ? (limit_exceeded ? 0x82 : 0x80) : 0x96;
+        if (limiter) mode = 2;
         if (speed > 0) {
             marker = show_number ? 0x26 : 0x22;
             set_speed = speed * 16;
         }
     }
+    if (failure) mode = 3;
+    set_speed = (set_speed & ~0x03) | mode;
 
     uint8_t frame[8] = {
         0,
