@@ -193,6 +193,25 @@ bool canSendEmergencyCall() {
     return true;
 }
 
+// Ambient brightness, no CRC. When dark (byte 0 below about 0x0C) the display follows the
+// headlights: night design with the lights on, day design with them off. Bright keeps day design.
+bool canSendAmbientBrightness() {
+    static bool day_design = false;
+
+    uint8_t frame[8] = {(uint8_t)(day_design ? 0x30 : 0x00), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    canSend(0x2A5, frame, sizeof(frame));
+    return true;
+}
+
+// High beam assistant status, no CRC. Byte 0 bit 1 shows the green "A", 0xFF is invalid.
+bool canSendHighBeamAssist() {
+    static bool high_beam_assist = false;
+
+    uint8_t frame[8] = {(uint8_t)(high_beam_assist ? 0x02 : 0x01), 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00};
+    canSend(0x36A, frame, sizeof(frame));
+    return true;
+}
+
 // Cruise control (layout from fatihcesur/bmw-f30-cluster-simhub):
 //   byte 2     0x22 set speed marker, 0x26 marker and the set speed as a number
 //   byte 5     0x96 cruise symbol, 0x80 in limiter mode, bit 1 makes LIM blink
@@ -740,6 +759,8 @@ void loop() {
             queuePush(canSendLimitRed);
             queuePush(canSendLevelControl);
             queuePush(canSendEmergencyCall);
+            queuePush(canSendHighBeamAssist);
+            queuePush(canSendAmbientBrightness);
         }
         // 500 ms
         if (s_timers.canCounter % 50 == 5) {
