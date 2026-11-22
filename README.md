@@ -2,7 +2,7 @@
 
 ![Arduino Build](https://github.com/veikkos/f02-can-cluster/actions/workflows/build.yml/badge.svg)
 
-Drives a real BMW F-series instrument cluster from a PC, for use in driving games. A spinoff of [e90-can-cluster](https://github.com/veikkos/e90-can-cluster), which documents the PC side: the binary serial protocol, the proxy and the BeamNG plugin.
+Drives a real BMW F-series instrument cluster from a PC, for use in driving games. A spinoff of [e90-can-cluster](https://github.com/veikkos/e90-can-cluster), which documents the PC side: the proxy and the BeamNG plugin. The binary serial protocol is documented in the [proxy](https://github.com/veikkos/outgauge-proxy#binary-serial-protocol).
 
 Developed on an F01/F02 (7 series) cluster, part number 9312035, with an ESP32. Other F-series clusters may behave differently.
 
@@ -34,7 +34,7 @@ Known limitations:
 
 - The CAN bus runs at 500 kbit/s and many frames carry a CRC and an alive counter.
 - Only the MCP2515 and ESP32 TWAI adapters are supported, see [config.h](config.h).
-- The binary protocol is the same. The fields marked F02 in its description are used only here.
+- The [binary protocol](https://github.com/veikkos/outgauge-proxy#binary-serial-protocol) is the same. The fields marked F02 in its description are used only here.
 - SimHub is not supported, only the binary protocol.
 
 ## Credits
