@@ -193,6 +193,13 @@ bool canSendEmergencyCall() {
     return true;
 }
 
+// Vehicle state, no CRC. Byte 2 low nibble 0 is energy state good.
+bool canSendVehicleState() {
+    uint8_t frame[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    canSend(0x3A0, frame, sizeof(frame));
+    return true;
+}
+
 // Ambient brightness, no CRC. When dark (byte 0 below about 0x0C) the display follows the
 // headlights: night design with the lights on, day design with them off. Bright keeps day design.
 bool canSendAmbientBrightness() {
@@ -772,6 +779,7 @@ void loop() {
             queuePush(canSetClock);
             queuePush(canSendBacklight);
             queuePush(canSendDriveMode);
+            queuePush(canSendVehicleState);
 #if defined(USE_AD5272_AMBIENT)
             updateAmbientTemperature();
 #endif
