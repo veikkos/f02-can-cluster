@@ -31,6 +31,13 @@ enum GEAR_MODE {
     SPORT
 };
 
+enum DRIVE_MODE {
+    DM_UNKNOWN = 0,
+    DM_COMFORT,
+    DM_SPORT,
+    DM_SPORT_PLUS
+};
+
 enum IGNITION_STATE {
     IG_OFF = 0,
     IG_ACCESSORY = 1,
@@ -175,8 +182,7 @@ struct SInput {
 
     bool coasting = false;
 
-    // 0 unknown, 1 comfort, 2 sport, 3 sport+
-    uint8_t drive_mode = 0;
+    DRIVE_MODE drive_mode = DM_UNKNOWN;
 
     struct {
         bool enabled = false;

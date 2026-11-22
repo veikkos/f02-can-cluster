@@ -326,10 +326,10 @@ bool canSendDriveMode() {
     // 1 TRACTION, 2 COMFORT+, 4 SPORT, 5 SPORT+, 6 DSC OFF
     uint8_t mode;
     switch (s_input.drive_mode) {
-        case 1:  mode = 2; break;
-        case 2:  mode = 4; break;
-        case 3:  mode = 5; break;
-        default: mode = s_input.mode == SPORT ? 4 : 2; break;
+        case DM_COMFORT:    mode = 2; break;
+        case DM_SPORT:      mode = 4; break;
+        case DM_SPORT_PLUS: mode = 5; break;
+        default:            mode =s_input.mode == SPORT ? 4 : 2; break;
     }
     if (s_input.light_esc_disabled) {
         mode = 6;
