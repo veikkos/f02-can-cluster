@@ -89,6 +89,24 @@ bool canSendRPM() {
     return true;
 }
 
+// Accelerator pedal. In ECO PRO a changing value shows the "ease off the pedal" tip,
+// so it could be fed from the game's throttle.
+bool canSendAcceleratorPedal() {
+    static uint8_t counter = 0;
+    // 0xC0 is the value in the F11 frame the payload comes from. The cluster takes any
+    // value 0x00-0xFF, the scale is not known.
+    uint8_t accelerator_pedal = 0xC0;
+
+    uint8_t frame[8] = {
+        0,
+        (uint8_t)(0x10 | nextCounter(counter)),
+        0x00, 0x10, 0x00, 0xE0, 0x7F,
+        accelerator_pedal
+    };
+    canSendCrc(0x0D9, frame, sizeof(frame), 0x22);
+    return true;
+}
+
 bool canSendSpeed() {
     static uint8_t counter = 0;
 
@@ -190,6 +208,57 @@ bool canSendEmergencyCall() {
     static uint8_t counter = 0;
     uint8_t frame[8] = {0, (uint8_t)(0xF0 | nextCounter(counter)), 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
     canSendCrc(0x2C3, frame, sizeof(frame), 0x00);
+    return true;
+}
+
+// Gateway alive, the low nibble of byte 0 is the counter
+bool canSendGatewayAlive() {
+    static uint8_t counter = 0;
+    uint8_t frame[2] = {(uint8_t)(0xF0 | nextCounter(counter)), 0xFF};
+    canSend(0x0C0, frame, sizeof(frame));
+    return true;
+}
+
+// Engine torque. Payload from the F11, only keeps the cluster from storing it missing.
+bool canSendEngineTorque() {
+    static uint8_t counter = 0;
+    uint8_t frame[8] = {0, (uint8_t)(0xF0 | nextCounter(counter)), 0xC6, 0x67, 0x7C, 0x00, 0x00, 0xF1};
+    canSendCrc(0x0A5, frame, sizeof(frame), 0x9F);
+    return true;
+}
+
+// Central locking and lids, no CRC. Payload from the i3: doors closed. The door symbols
+// come from check controls, see canSendDoorOpenFrontLeft.
+bool canSendCentralLocking() {
+    uint8_t frame[8] = {0x81, 0x00, 0x04, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    canSend(0x2FC, frame, sizeof(frame));
+    return true;
+}
+
+// The next four only keep the cluster from storing them missing. No CRC, all zeros is
+// accepted and shows nothing.
+bool canSendDscStatus() {
+    uint8_t frame[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    canSend(0x173, frame, sizeof(frame));
+    return true;
+}
+
+bool canSendDrivingLightsStatus() {
+    uint8_t frame[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    canSend(0x314, frame, sizeof(frame));
+    return true;
+}
+
+bool canSendSpeedConversionFactor() {
+    uint8_t frame[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    canSend(0x3CB, frame, sizeof(frame));
+    return true;
+}
+
+// Driving dynamics switch configuration. 0xFF bytes make it invalid.
+bool canSendDrivingDynamicsSwitchConfig() {
+    uint8_t frame[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    canSend(0x3E6, frame, sizeof(frame));
     return true;
 }
 
@@ -358,10 +427,11 @@ bool canSendBacklight() {
 bool canSendDriveMode() {
     static uint8_t counter = 0;
 
-    // 1 TRACTION, 2 COMFORT+, 4 SPORT, 5 SPORT+, 6 DSC OFF
+    // 1 TRACTION, 2 COMFORT+, 4 SPORT, 5 SPORT+, 6 DSC OFF, 7 ECO PRO
     uint8_t mode;
     switch (s_input.drive_mode) {
         case DM_COMFORT:    mode = 2; break;
+        case DM_ECO_PRO:    mode = 7; break;
         case DM_SPORT:      mode = 4; break;
         case DM_SPORT_PLUS: mode = 5; break;
         default:            mode =s_input.mode == SPORT ? 4 : 2; break;
@@ -535,17 +605,6 @@ bool canSendDistance() {
     return true;
 }
 
-// Electronic oil dipstick, same as e90
-bool canSendOilLevel() {
-    // Level: 0x0C below min, 0x35 middle. Advice: 0xF0 OK, 0xF2 add 1 l
-    uint8_t frame[2] = {
-        (uint8_t)(s_input.oil_warn ? 0x0C : 0x35),
-        (uint8_t)(s_input.oil_warn ? 0xF2 : 0xF0)
-    };
-    canSend(0x381, frame, sizeof(frame));
-    return true;
-}
-
 // Check control messages
 void canSendErrorLight(uint16_t light_id, bool enable) {
     uint8_t frame[] = {
@@ -585,8 +644,6 @@ DEFINE_CAN_SEND_SYMBOL(canSendCheckEngineSymbol, s_input.check_engine, CHECK_ENG
 DEFINE_CAN_SEND_SYMBOL(canSendClutchTempSymbol, s_input.clutch_temp, GEARBOX_TEMP_YELLOW, 25, 3)
 DEFINE_CAN_SEND_SYMBOL(canSendOilWarningSymbol, s_input.oil_warn, OIL_RED, 25, 4)
 DEFINE_CAN_SEND_SYMBOL(canSendBatteryWarningSymbol, s_input.battery_warn , BATTERY_RED, 25, 5)
-// Not shown on the F02
-DEFINE_CAN_SEND_SYMBOL(canSendBrakeTempSymbol, s_input.brake_temp, BRAKES_HOT, 25, 6)
 DEFINE_CAN_SEND_SYMBOL(canSendTireDeflatedFl, s_input.tires.fl_deflated, LOW_TIRE_PRESSURE_FRONT_LEFT, 25, 7)
 DEFINE_CAN_SEND_SYMBOL(canSendTireDeflatedFr, s_input.tires.fr_deflated, LOW_TIRE_PRESSURE_FRONT_RIGHT, 25, 8)
 DEFINE_CAN_SEND_SYMBOL(canSendTireDeflatedRl, s_input.tires.rl_deflated, LOW_TIRE_PRESSURE_REAR_LEFT, 25, 9)
@@ -605,8 +662,6 @@ DEFINE_CAN_SEND_SYMBOL(canSendTcDisabledSymbol, s_input.light_tc_disabled && !s_
 DEFINE_CAN_SEND_SYMBOL(canSendBeaconSymbol, s_input.light_beacon, ALARM_LIGHT, 25, 17)
 DEFINE_CAN_SEND_SYMBOL(canSendYellowTriangle, s_input.yellow_triangle, YELLOW_TRIANGLE, 25, 18)
 DEFINE_CAN_SEND_SYMBOL(canSendRedTriangle, s_input.red_triangle, RED_TRIANGLE, 25, 19)
-// Not shown on the F02
-DEFINE_CAN_SEND_SYMBOL(canSendGearIssue, s_input.gear_issue, GEARBOX_ISSUE_YELLOW, 25, 20)
 DEFINE_CAN_SEND_SYMBOL(canSendCheckeredFlag, s_input.checkered_flag, CHECKERED_FLAG, 25, 23)
 DEFINE_CAN_SEND_SYMBOL(canSendLimitYellow, s_input.limit_yellow, LIMIT_YELLOW, 25, 24)
 DEFINE_CAN_SEND_SYMBOL(canSendLimitRed, s_input.limit_red, LIMIT_RED, 25, 25)
@@ -708,6 +763,7 @@ void loop() {
         if (s_timers.canCounter % 2 == 0) {
             queuePush(canSendRPM);
             queuePush(canSendSpeed);
+            queuePush(canSendAcceleratorPedal);
         }
         // 50 ms
         if (s_timers.canCounter % 5 == 1) {
@@ -733,6 +789,13 @@ void loop() {
             queuePush(canSendAcc);
             queuePush(canSendSafetyCounter);
             queuePush(canSendSteeringColumnButtons);
+            queuePush(canSendGatewayAlive);
+            queuePush(canSendEngineTorque);
+            queuePush(canSendCentralLocking);
+            queuePush(canSendDscStatus);
+            queuePush(canSendDrivingLightsStatus);
+            queuePush(canSendSpeedConversionFactor);
+            queuePush(canSendDrivingDynamicsSwitchConfig);
         }
         // 200 ms
         if (s_timers.canCounter % 20 == 13) {
@@ -743,7 +806,6 @@ void loop() {
             queuePush(canSendOilWarningSymbol);
             queuePush(canSendBatteryWarningSymbol);
             queuePush(canSendCustomSymbol);
-            queuePush(canSendBrakeTempSymbol);
             queuePush(canSendTireDeflatedFl);
             queuePush(canSendTireDeflatedFr);
             queuePush(canSendTireDeflatedRl);
@@ -760,7 +822,6 @@ void loop() {
             queuePush(canSendBeaconSymbol);
             queuePush(canSendYellowTriangle);
             queuePush(canSendRedTriangle);
-            queuePush(canSendGearIssue);
             queuePush(canSendCheckeredFlag);
             queuePush(canSendLimitYellow);
             queuePush(canSendLimitRed);
@@ -788,11 +849,6 @@ void loop() {
         if (s_timers.canCounter % 100 == 38) {
             queuePush(canSetClockRest);
         }
-        // 10 s
-        if (s_timers.canCounter % 1000 == 47) {
-            queuePush(canSendOilLevel);
-        }
-
         s_timers.canCounter++;
     }
 
