@@ -7,7 +7,17 @@
 
 extern SInput s_input;
 
-#define FRAME_LENGTH 35
+#define FRAME_LENGTH 38
+
+// Low nibble of the gear mode byte, the high nibble is the drive mode
+enum GEAR_EXTENSION : uint8_t {
+    GEAR_EXT_NONE = 0,
+    GEAR_EXT_AUTOMATIC,
+    GEAR_EXT_SEMI_AUTOMATIC,
+    GEAR_EXT_SPORT,
+    GEAR_EXT_PARK
+};
+
 static char rx_buf[FRAME_LENGTH];
 static size_t rx_pos = 0;
 static bool line_ready = false;
@@ -66,7 +76,7 @@ static void serialParse() {
     }
 
     if (checksumCalculated != checksumReceived) {
-        serial_printf(pc, "[UART] Checksum mismatch: received %02X, calculated %02X\n", checksumReceived, checksumCalculated);
+        serial_printf(pc, "[UART] Checksum mismatch. Update the firmware and the proxy\n");
         return;
     }
 
@@ -96,8 +106,6 @@ static void serialParse() {
     s_input.light_highbeam   = flags & (1UL << 1);
     s_input.handbrake        = flags & (1UL << 2);
     s_input.light_tc_active  = flags & (1UL << 4);
-
-    s_input.drive_mode = (DRIVE_MODE)(((flags >> 3) & 0x01) | (((flags >> 7) & 0x01) << 1));
 
     bool left_signal  = flags & (1UL << 5);
     bool right_signal = flags & (1UL << 6);
@@ -153,18 +161,24 @@ static void serialParse() {
     s_input.light_tc_disabled  = flags & (1UL << 30);
     s_input.light_esc_disabled = flags & (1UL << 31);
 
-    uint8_t flagsExt = p[idx++];
-    s_input.yellow_triangle  = flagsExt & (1UL << 0);
-    s_input.red_triangle     = flagsExt & (1UL << 1);
-    s_input.gear_issue       = flagsExt & (1UL << 2);
-    s_input.checkered_flag   = flagsExt & (1UL << 5);
-    s_input.limit_yellow     = flagsExt & (1UL << 6);
-    s_input.limit_red        = flagsExt & (1UL << 7);
+    uint32_t flagsExt = parse_u32(&p[idx]); idx += 4;
+    s_input.yellow_triangle   = flagsExt & (1UL << 0);
+    s_input.red_triangle      = flagsExt & (1UL << 1);
+    s_input.gear_issue        = flagsExt & (1UL << 2);
+    s_input.checkered_flag    = flagsExt & (1UL << 5);
+    s_input.limit_yellow      = flagsExt & (1UL << 6);
+    s_input.limit_red         = flagsExt & (1UL << 7);
+    s_input.doors.bonnet_open = flagsExt & (1UL << 8);
+    s_input.bc_button         = flagsExt & (1UL << 9);
+    s_input.coasting          = flagsExt & (1UL << 10);
+    if (s_input.bc_button) s_input.bc_pressed = true;
 
     s_input.fuel_injection   = parse_u16(&p[idx]); idx += 2;
     s_input.custom_light     = parse_u16(&p[idx]); idx += 2;
     s_input.custom_light_on  = p[idx++] != 0;
-    uint8_t gearMode         = p[idx++];
+    uint8_t gearByte         = p[idx++];
+    uint8_t gearMode         = gearByte & 0x0F;
+    uint8_t driveMode        = gearByte >> 4;
     s_input.cruise.speed     = parse_u16(&p[idx]); idx += 2;
 
     uint8_t cruiseMode       = p[idx++];
@@ -174,17 +188,15 @@ static void serialParse() {
     uint8_t distanceCode = (cruiseMode >> 3) & 0x07;
     s_input.cruise.acc.distance = (distanceCode >= 1 && distanceCode <= 4) ? distanceCode : 0;
 
-    s_input.coasting = (cruiseMode & 0x40) != 0;
-    s_input.bc_button = (cruiseMode & 0x80) != 0;
-    if (s_input.bc_button) s_input.bc_pressed = true;
-
     s_input.ignition         = (IGNITION_STATE)p[idx++];
     s_input.engine_running   = p[idx++] != 0;
 
     s_input.ambient_temp = parse_u16(&p[idx]); idx += 2;
 
+    s_input.drive_mode = driveMode <= DM_ECO_PRO ? (DRIVE_MODE)driveMode : DM_UNKNOWN;
+
     // Gear logic
-    if (gearMode == 'P') {
+    if (gearMode == GEAR_EXT_PARK) {
         s_input.explicitGear = NONE;
         s_input.currentGear = PARK;
         s_input.mode = NORMAL;
@@ -196,14 +208,14 @@ static void serialParse() {
         s_input.explicitGear = NONE;
         s_input.currentGear = REVERSE;
         s_input.mode = NORMAL;
-    } else if (gearMode == 'A') {
+    } else if (gearMode == GEAR_EXT_AUTOMATIC) {
         s_input.explicitGear = NONE;
         s_input.currentGear = DRIVE;
         s_input.mode = NORMAL;
     } else {
         s_input.explicitGear = (GEAR_MANUAL)(min(gear - 1, NUMBER_OF_GEARS));
         s_input.currentGear = DRIVE;
-        s_input.mode = (gearMode == 'S') ? SPORT : NORMAL;
+        s_input.mode = (gearMode == GEAR_EXT_SPORT) ? SPORT : NORMAL;
     }
 
 #ifdef LED_BUILTIN

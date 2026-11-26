@@ -656,6 +656,9 @@ DEFINE_CAN_SEND_SYMBOL(canSendDoorOpenFrontRight, s_input.doors.fr_open, DOOR_OP
 DEFINE_CAN_SEND_SYMBOL(canSendDoorOpenRearLeft, s_input.doors.rl_open, DOOR_OPEN_REAR_LEFT, 25, 22)
 DEFINE_CAN_SEND_SYMBOL(canSendDoorOpenRearRight, s_input.doors.rr_open, DOOR_OPEN_REAR_RIGHT, 25, 23)
 DEFINE_CAN_SEND_SYMBOL(canSendTailgateOpen, s_input.doors.tailgate_open, BOOT_OPEN, 25, 15)
+DEFINE_CAN_SEND_SYMBOL(canSendBonnetOpen, s_input.doors.bonnet_open, BONNET_OPEN, 25, 6)
+DEFINE_CAN_SEND_SYMBOL(canSendBrakeTempSymbol, s_input.brake_temp, HIGH_BRAKE_LOAD, 25, 20)
+DEFINE_CAN_SEND_SYMBOL(canSendGearIssueSymbol, s_input.gear_issue, TRANSMISSION_DRIVE_MODERATELY, 25, 21)
 // DSC off covers traction control off
 DEFINE_CAN_SEND_SYMBOL(canSendEscDisabledSymbol, s_input.light_esc_disabled, DSC_TRIANGLE_DOUBLE, 25, 16)
 DEFINE_CAN_SEND_SYMBOL(canSendTcDisabledSymbol, s_input.light_tc_disabled && !s_input.light_esc_disabled, DTC_MODE, 25, 26)
@@ -770,7 +773,7 @@ void loop() {
             queuePush(canSendEscSymbol);
             queuePush(canSendLights);
         }
-        // 100 ms
+        // 100 ms group 1
         if (s_timers.canCounter % 10 == 3) {
             queuePush(canSendIgnitionFrame);
             queuePush(canSendGearboxData);
@@ -784,6 +787,9 @@ void loop() {
             queuePush(canSendPowerSteering);
             queuePush(canSendCruiseControl);
             queuePush(canSendAirbag);
+        }
+        // 100 ms group 2
+        if (s_timers.canCounter % 10 == 7) {
             queuePush(canSendSeatbelt);
             queuePush(canSendTirePressure);
             queuePush(canSendAcc);
@@ -797,8 +803,8 @@ void loop() {
             queuePush(canSendSpeedConversionFactor);
             queuePush(canSendDrivingDynamicsSwitchConfig);
         }
-        // 200 ms
-        if (s_timers.canCounter % 20 == 13) {
+        // 200 ms group 1
+        if (s_timers.canCounter % 20 == 9) {
             queuePush(canSendEngineTempYellowSymbol);
             queuePush(canSendEngineTempRedSymbol);
             queuePush(canSendCheckEngineSymbol);
@@ -812,11 +818,19 @@ void loop() {
             queuePush(canSendTireDeflatedRr);
             queuePush(canSendTireDeflatedAll);
             queuePush(canSendRadiatorSymbol);
+            queuePush(canSendLevelControl);
+            queuePush(canSendEmergencyCall);
+        }
+        // 200 ms group 2
+        if (s_timers.canCounter % 20 == 19) {
             queuePush(canSendDoorOpenFrontLeft);
             queuePush(canSendDoorOpenFrontRight);
             queuePush(canSendDoorOpenRearLeft);
             queuePush(canSendDoorOpenRearRight);
             queuePush(canSendTailgateOpen);
+            queuePush(canSendBonnetOpen);
+            queuePush(canSendBrakeTempSymbol);
+            queuePush(canSendGearIssueSymbol);
             queuePush(canSendEscDisabledSymbol);
             queuePush(canSendTcDisabledSymbol);
             queuePush(canSendBeaconSymbol);
@@ -825,8 +839,6 @@ void loop() {
             queuePush(canSendCheckeredFlag);
             queuePush(canSendLimitYellow);
             queuePush(canSendLimitRed);
-            queuePush(canSendLevelControl);
-            queuePush(canSendEmergencyCall);
             queuePush(canSendHighBeamAssist);
             queuePush(canSendAmbientBrightness);
         }

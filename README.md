@@ -14,8 +14,8 @@ _Click the image to see the gallery_
 ## Features
 
 - Speedometer, odometer, RPM, fuel gauge, range, and instant and average consumption
-- Gear and drive mode (COMFORT+, SPORT, SPORT+, TRACTION, DSC OFF)
-- Lights, indicators, handbrake, doors and boot
+- Gear and drive mode (COMFORT+, SPORT, SPORT+, ECO PRO, TRACTION, DSC OFF)
+- Lights, indicators, handbrake, doors, boot and bonnet
 - DSC and traction control lamps and messages
 - Cruise control with the set speed
 - EfficientDynamics energy recovery

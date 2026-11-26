@@ -72,6 +72,9 @@ enum ErrorLightID : uint16_t {
     DOOR_OPEN_FRONT_LEFT = 15,
     DOOR_OPEN_REAR_LEFT = 16,
     DOOR_OPEN_REAR_RIGHT = 17,
+    BONNET_OPEN = 18,
+    TRANSMISSION_DRIVE_MODERATELY = 173,
+    HIGH_BRAKE_LOAD = 431,
     ALARM_LIGHT = 508,
     CHECKERED_FLAG = 446
 };
@@ -152,6 +155,7 @@ struct SInput {
         bool rl_open = false;
         bool rr_open = false;
         bool tailgate_open = false;
+        bool bonnet_open = false;
     } doors;
 
     bool handbrake = false;
